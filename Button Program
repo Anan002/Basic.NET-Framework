@@ -1,0 +1,109 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Web;
+using System.Web.DynamicData;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace asp.netcrud
+{
+    public partial class Contact1 : System.Web.UI.Page
+    {
+
+        SqlConnection sqlCon = new SqlConnection(@"Data Source= DESKTOP-TK8OU3F;Initial Catalog =ASPCRUD; Integrated Security=true;");
+
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                btnDelete.Enabled = false;
+                FillGridView();
+            }
+        }
+
+        protected void btnClear_Click(object sender, EventArgs e)
+        {
+            Clear();
+        }
+        public void Clear()
+        {
+            hfContactID.Value = "";
+            txtName.Text= txtMobile.Text= txtAddress.Text="";
+            lblSuccessMessage.Text = lblErrorMessage.Text = "";
+            btnSave.Text = "Save";
+            btnDelete.Enabled = false ;  
+
+        }
+
+        protected void btnSave_Click(object sender, EventArgs e)
+        {
+            if (sqlCon.State == System.Data.ConnectionState.Closed)
+                sqlCon.Open();
+            SqlCommand sqlcmd = new SqlCommand("ContactCreateorUpdate",sqlCon);
+            sqlcmd.CommandType = System.Data.CommandType.StoredProcedure;
+            sqlcmd.Parameters.AddWithValue("@ContactID",(hfContactID.Value==""?0:Convert.ToInt32(hfContactID.Value)));
+            sqlcmd.Parameters.AddWithValue("@Name",txtName.Text.Trim());
+            sqlcmd.Parameters.AddWithValue("@Mobile", txtMobile.Text.Trim());
+            sqlcmd.Parameters.AddWithValue("@Address", txtAddress.Text.Trim());
+            sqlcmd.ExecuteNonQuery();
+            sqlCon.Close();
+            string contactID = hfContactID.Value;   
+            Clear();
+            if(contactID == "")
+            {
+                lblSuccessMessage.Text = "Saved Sccessfully";
+
+            }
+            else
+                lblSuccessMessage.Text = "Update Sccessfully";
+            FillGridView();
+        }
+        void FillGridView()
+        {
+            if (sqlCon.State == System.Data.ConnectionState.Closed)
+                sqlCon.Open();
+            SqlDataAdapter sqlDa = new SqlDataAdapter("ContactViewAll",sqlCon);
+            sqlDa.SelectCommand.CommandType = System.Data.CommandType.StoredProcedure;
+            DataTable dtbl= new DataTable();
+            sqlDa.Fill(dtbl);
+            sqlCon.Close();
+            gvContact.DataSource = dtbl;
+            gvContact.DataBind();
+        }
+        protected void lnk_OnClink(object sender, System.EventArgs e)
+        {
+            int contactID = Convert.ToInt32((sender as LinkButton).CommandArgument);
+            if (sqlCon.State == System.Data.ConnectionState.Closed)
+                sqlCon.Open();
+            SqlDataAdapter sqlDa = new SqlDataAdapter("ContactViewByID", sqlCon);
+            sqlDa.SelectCommand.CommandType = System.Data.CommandType.StoredProcedure;
+            sqlDa.SelectCommand.Parameters.AddWithValue("@ContactID", contactID);
+            DataTable dtbl = new DataTable();
+            sqlDa.Fill(dtbl);
+            sqlCon.Close();
+            hfContactID.Value = contactID.ToString();
+            txtName.Text= dtbl.Rows[0]["Name"].ToString();
+            txtMobile.Text = dtbl.Rows[0]["Mobile"].ToString();
+            txtAddress.Text = dtbl.Rows[0]["Address"].ToString();
+            btnSave.Text = "update";
+            btnDelete.Enabled = true;
+        }
+
+        protected void btnDelete_Click(object sender, EventArgs e)
+        {
+            if (sqlCon.State == System.Data.ConnectionState.Closed)
+                sqlCon.Open();
+            SqlCommand sqlCmd = new SqlCommand("ContactDeletebyID",sqlCon);
+            sqlCmd.CommandType= CommandType.StoredProcedure;
+            sqlCmd.Parameters.AddWithValue("@ContactID",Convert. ToInt32(hfContactID.Value));
+            sqlCmd.ExecuteNonQuery();
+            sqlCon.Close();
+            Clear();
+            FillGridView();
+            lblSuccessMessage.Text = "Deleted successfully";
+        }
+    }
+}
